@@ -4,6 +4,11 @@
 #include <ArduinoOTA.h>
 #include "secrets.h"
 
+
+const char* server = "192.168.0.4";
+uint16_t serverPort = 65432;
+uint32_t old_time;
+
 const char* ssid = SECRET_SSID;
 const char* password = SECRET_PASS;
 const char* host = "PowerMonitor_ESP";
@@ -22,6 +27,7 @@ int ref_offset;
 
 int A0_flat = 0;
 int i = 0;
+int U_sensorValue = 0;
 
 // 16-bit ADC
 
@@ -37,6 +43,8 @@ int i = 0;
 ADS1115_WE adc = ADS1115_WE(I2C_ADDRESS);
 
 
+// server
+WiFiClient client;
 
 
 
@@ -180,12 +188,24 @@ void setup() {
       samples.add(readChannel(ADS1115_COMP_3_GND));
     }
   ref_offset = samples.getMedian();
+
+
+  // connect to server
+  Serial.printf("connecting to %s %d \n", server, serverPort);
+  if (!client.connect(server, serverPort)) {
+    Serial.println("connection failed");
+    delay(5000);
+    return;
+  }
 }
 
 void loop() {
   yield();
   ArduinoOTA.handle();
 
+  U_sensorValue = analogRead(A0);
+  //Serial.print(U_sensorValue);
+  //Serial.print(" ");
   
   int sensorData = readChannel(ADS1115_COMP_0_GND);
   //int A0_avg = buffer_A0.reading(sensorData);
@@ -211,7 +231,8 @@ void loop() {
   //Serial.print(int(sensorData - ref));
   //Serial.print(" ");
 
-  Serial.println(A0_flat);
+  // PRINT HERE
+  //Serial.println(A0_flat);
 
   //Serial.print(sensorMovingAvg);
   //Serial.print(" ");
@@ -236,6 +257,11 @@ void loop() {
 
 
   //delay(200);
+
+  if (millis() - old_time >= 1000) {
+    old_time=millis();
+    TCP_send(float(U_sensorValue),float(A0_flat/10000),float(0));
+  }
 }
 
 int readChannel(ADS1115_MUX channel) {
@@ -243,4 +269,24 @@ int readChannel(ADS1115_MUX channel) {
   adc.setCompareChannels(channel);
   value = adc.getRawResult(); // alternative: getResult_mV for Millivolt , getResult_V
   return value;
+}
+
+
+void TCP_send(float v1, float v2, float v3) {
+  Serial.println("sending data to server");
+  String json_string = "{\"Phase1\":" + String(v1,4) + ",\"Phase2\":" + String(v2,4) + ",\"Phase3\":" + String(v3,4) + "}";
+  //String json_string = sprintf("{\"Phase1\": %d, \"Phase2\": %d, \"Phase3\": %d}",v1,v2,v3);
+  
+  int str_len = json_string.length() + 1; 
+  
+  // Prepare the character array (the buffer) 
+  char char_array[str_len];
+  
+  // Copy it over 
+  json_string.toCharArray(char_array, str_len);
+  client.printf(char_array);
+  client.flush();
+  Serial.print(char_array);
+  //Serial.println("closing connection");
+  //client.stop();
 }
