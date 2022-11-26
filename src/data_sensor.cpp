@@ -22,7 +22,7 @@ int x = 100;
 
 RunningMedian buffer_A0 = RunningMedian(x);
 
-RunningMedian samples = RunningMedian(1000);  // for calibration in setup
+RunningMedian samples = RunningMedian(250);  // for calibration in setup
 int ref_offset;
 
 int A0_flat = 0;
@@ -73,6 +73,7 @@ void TCP_send(float v1, float v2, float v3) {
 }
 
 void setup() {
+  pinMode(A0, INPUT);
   Wire.begin();
   Serial.begin(115200);
 
@@ -233,7 +234,7 @@ void loop() {
   
   int sensorData = readChannel(ADS1115_COMP_0_GND);
   Serial.print(sensorData);
-  Serial.print(" ");
+  Serial.println(" ");
   //int A0_avg = buffer_A0.reading(sensorData);
   
   int ref = readChannel(ADS1115_COMP_3_GND) - ref_offset;
