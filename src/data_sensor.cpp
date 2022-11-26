@@ -54,7 +54,7 @@ int readChannel(ADS1115_MUX channel) {
 }
 
 void TCP_send(float v1, float v2, float v3) {
-  Serial.println("sending data to server");
+  Serial.print("sending data to server");
   String json_string = "{\"Phase1\":" + String(v1,4) + ",\"Phase2\":" + String(v2,4) + ",\"Phase3\":" + String(v3,4) + "}";
   //String json_string = sprintf("{\"Phase1\": %d, \"Phase2\": %d, \"Phase3\": %d}",v1,v2,v3);
   
@@ -67,7 +67,7 @@ void TCP_send(float v1, float v2, float v3) {
   json_string.toCharArray(char_array, str_len);
   client.printf(char_array);
   client.flush();
-  Serial.print(char_array);
+  Serial.println(char_array);
   //Serial.println("closing connection");
   //client.stop();
 }
@@ -228,16 +228,25 @@ void loop() {
   ArduinoOTA.handle();
 
   U_sensorValue = analogRead(A0);
-  //Serial.print(U_sensorValue);
-  //Serial.print(" ");
+  Serial.print(U_sensorValue);
+  Serial.print(" ");
   
   int sensorData = readChannel(ADS1115_COMP_0_GND);
+  Serial.print(sensorData);
+  Serial.print(" ");
   //int A0_avg = buffer_A0.reading(sensorData);
   
   int ref = readChannel(ADS1115_COMP_3_GND) - ref_offset;
   //int ref_avg = buffer_ref.reading(ref);
 
+  /*
   buffer_A0.add(int(sensorData - ref));
+  i++ ;
+  if (i == x){
+    A0_flat = buffer_A0.getMedian();
+    i=0;
+  }
+  */
 
 
   //Serial.print(sensorData);
@@ -261,12 +270,6 @@ void loop() {
   //Serial.print(sensorMovingAvg);
   //Serial.print(" ");
   
-  i++ ;
-
-  if (i == x){
-    A0_flat = buffer_A0.getMedian();
-    i=0;
-  }
   
   //Serial.println(send_data);
   
@@ -282,10 +285,12 @@ void loop() {
 
   //delay(200);
 
+  /*
   if (millis() - old_time >= 1000) {
     old_time=millis();
     TCP_send(float(U_sensorValue),float(A0_flat/10000),float(0));
   }
+  */
 }
 
 
