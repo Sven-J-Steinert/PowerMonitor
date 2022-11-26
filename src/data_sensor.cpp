@@ -229,10 +229,10 @@ void loop() {
   ArduinoOTA.handle();
 
   U_sensorValue = analogRead(A0);
+  int sensorData = readChannel(ADS1115_COMP_0_GND);
+  
   Serial.print(U_sensorValue);
   Serial.print(" ");
-  
-  int sensorData = readChannel(ADS1115_COMP_0_GND);
   Serial.print(sensorData);
   Serial.println(" ");
   //int A0_avg = buffer_A0.reading(sensorData);
