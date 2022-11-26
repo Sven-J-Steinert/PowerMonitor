@@ -46,7 +46,31 @@ ADS1115_WE adc = ADS1115_WE(I2C_ADDRESS);
 // server
 WiFiClient client;
 
+int readChannel(ADS1115_MUX channel) {
+  int value = 0.0;
+  adc.setCompareChannels(channel);
+  value = adc.getRawResult(); // alternative: getResult_mV for Millivolt , getResult_V
+  return value;
+}
 
+void TCP_send(float v1, float v2, float v3) {
+  Serial.println("sending data to server");
+  String json_string = "{\"Phase1\":" + String(v1,4) + ",\"Phase2\":" + String(v2,4) + ",\"Phase3\":" + String(v3,4) + "}";
+  //String json_string = sprintf("{\"Phase1\": %d, \"Phase2\": %d, \"Phase3\": %d}",v1,v2,v3);
+  
+  int str_len = json_string.length() + 1; 
+  
+  // Prepare the character array (the buffer) 
+  char char_array[str_len];
+  
+  // Copy it over 
+  json_string.toCharArray(char_array, str_len);
+  client.printf(char_array);
+  client.flush();
+  Serial.print(char_array);
+  //Serial.println("closing connection");
+  //client.stop();
+}
 
 void setup() {
   Wire.begin();
@@ -264,29 +288,7 @@ void loop() {
   }
 }
 
-int readChannel(ADS1115_MUX channel) {
-  int value = 0.0;
-  adc.setCompareChannels(channel);
-  value = adc.getRawResult(); // alternative: getResult_mV for Millivolt , getResult_V
-  return value;
-}
 
 
-void TCP_send(float v1, float v2, float v3) {
-  Serial.println("sending data to server");
-  String json_string = "{\"Phase1\":" + String(v1,4) + ",\"Phase2\":" + String(v2,4) + ",\"Phase3\":" + String(v3,4) + "}";
-  //String json_string = sprintf("{\"Phase1\": %d, \"Phase2\": %d, \"Phase3\": %d}",v1,v2,v3);
-  
-  int str_len = json_string.length() + 1; 
-  
-  // Prepare the character array (the buffer) 
-  char char_array[str_len];
-  
-  // Copy it over 
-  json_string.toCharArray(char_array, str_len);
-  client.printf(char_array);
-  client.flush();
-  Serial.print(char_array);
-  //Serial.println("closing connection");
-  //client.stop();
-}
+
+
