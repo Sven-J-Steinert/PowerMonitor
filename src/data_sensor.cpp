@@ -105,7 +105,7 @@ void setup() {
   ArduinoOTA.begin();
   //Serial.println("Ready");
 
-
+  Serial.print("Starting ADC setup...");
 
   // setup 16-bit ADC
   
@@ -207,6 +207,7 @@ void setup() {
   //Serial.println("All values in volts");
   //Serial.println();
 
+  Serial.println(" done.");
 
   long ref_sum = 0;
     for (int n=0; n <= 1000; n++){
@@ -228,16 +229,28 @@ void loop() {
   yield();
   ArduinoOTA.handle();
 
-  U_sensorValue = analogRead(A0);
-  int sensorData = readChannel(ADS1115_COMP_0_GND);
-  
-  Serial.print(U_sensorValue);
+  //U_sensorValue = analogRead(A0);
+  //int sensorData = readChannel(ADS1115_COMP_0_GND);
+
+  //Serial.print(U_sensorValue);
+  //Serial.print(" ");
+  Serial.print(adc.getRawResult());
   Serial.print(" ");
-  Serial.print(sensorData);
-  Serial.println(" ");
+  adc.setCompareChannels(ADS1115_COMP_1_GND);
+  Serial.print(adc.getRawResult());
+  Serial.print(" ");
+  adc.setCompareChannels(ADS1115_COMP_2_GND);
+  Serial.print(adc.getRawResult());
+  Serial.print(" ");
+  adc.setCompareChannels(ADS1115_COMP_3_GND);
+  Serial.println(adc.getRawResult());
+  adc.setCompareChannels(ADS1115_COMP_0_GND);
+  
+
+  //Serial.println(" ");
   //int A0_avg = buffer_A0.reading(sensorData);
   
-  int ref = readChannel(ADS1115_COMP_3_GND) - ref_offset;
+  //int ref = readChannel(ADS1115_COMP_3_GND) - ref_offset;
   //int ref_avg = buffer_ref.reading(ref);
 
   /*
