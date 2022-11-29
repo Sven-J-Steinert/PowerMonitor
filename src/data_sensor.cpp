@@ -31,6 +31,7 @@ ADS1115_WE adc = ADS1115_WE(I2C_ADDRESS);
 WiFiClient client;
 
 void initTimer();
+void initInterrupt();
 
 int readChannel(ADS1115_MUX channel) {
   int value = 0.0;
@@ -203,7 +204,8 @@ void setup() {
   Serial.println(" done.");
 
   Serial.print("Initializing Timer...");
-  initTimer();
+  //initTimer();
+  initInterrupt();
   Serial.println("done.");
 
   // connect to server
@@ -236,4 +238,16 @@ void initTimer()
   timer1_attachInterrupt(timerCall);
   timer1_enable(TIM_DIV16, TIM_EDGE, TIM_LOOP); // 5 ticks/us
   timer1_write(5814); // 5814 / 5 ticks per us from TIM_DIV16 == 1162.8 us interval -> 860 SPS
+}
+
+void IRAM_ATTR interruptCall()
+{
+  Serial.print(adc.getRawResult());
+  Serial.print(" ");
+  Serial.println(analogRead(A0));
+}
+
+void initInterrupt()
+{
+  attachInterrupt(digitalPinToInterrupt(D5), interruptCall, FALLING);
 }
