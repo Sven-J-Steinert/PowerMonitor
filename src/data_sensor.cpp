@@ -2,8 +2,10 @@
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
+#include <ADS1115_WE.h> 
+#include <RunningMedian.h>
+#include <Wire.h>
 #include "secrets.h"
-
 
 const char* server = "192.168.0.4";
 uint16_t serverPort = 65432;
@@ -12,22 +14,6 @@ uint32_t old_time;
 const char* ssid = SECRET_SSID;
 const char* password = SECRET_PASS;
 const char* host = "PowerMonitor_ESP";
-
-#include <ADS1115_WE.h> 
-#include <RunningMedian.h>
-
-#include<Wire.h>
-
-int x = 100;
-
-RunningMedian buffer_A0 = RunningMedian(x);
-
-RunningMedian samples = RunningMedian(250);  // for calibration in setup
-int ref_offset;
-
-int A0_flat = 0;
-int i = 0;
-int U_sensorValue = 0;
 
 // 16-bit ADC
 
@@ -42,9 +28,9 @@ int U_sensorValue = 0;
  */
 ADS1115_WE adc = ADS1115_WE(I2C_ADDRESS);
 
-
-// server
 WiFiClient client;
+
+void initTimer();
 
 int readChannel(ADS1115_MUX channel) {
   int value = 0.0;
@@ -73,11 +59,14 @@ void TCP_send(float v1, float v2, float v3) {
 }
 
 void setup() {
+  Serial.begin(115200);
+  Serial.println("");
+  Serial.println("Booting");
+
   pinMode(A0, INPUT);
   Wire.begin();
-  Serial.begin(115200);
 
-  Serial.println("Booting");
+  Serial.print("Connecting to WiFi... ");
   WiFi.mode(WIFI_STA);
 
   WiFi.begin(ssid, password);
@@ -86,7 +75,10 @@ void setup() {
     WiFi.begin(ssid, password);
     Serial.println("Retrying connection...");
   }
+  Serial.println("connected.");
   
+
+  Serial.print("Starting OTA... ");
   ArduinoOTA.setHostname(host);
   ArduinoOTA.onStart([]() { 
     //during upgrade  
@@ -103,7 +95,8 @@ void setup() {
 
   /* setup the OTA server */
   ArduinoOTA.begin();
-  //Serial.println("Ready");
+  Serial.println("done.");
+
 
   Serial.print("Starting ADC setup...");
 
@@ -124,7 +117,7 @@ void setup() {
    * ADS1115_RANGE_0512  ->  +/- 512 mV
    * ADS1115_RANGE_0256  ->  +/- 256 mV
    */
-  adc.setVoltageRange_mV(ADS1115_RANGE_6144); //comment line/change parameter to change range
+  adc.setVoltageRange_mV(ADS1115_RANGE_4096); //comment line/change parameter to change range
 
   /* Set the inputs to be compared
    *  
@@ -147,7 +140,7 @@ void setup() {
    *  ADS1115_ASSERT_AFTER_4  -> after 4 conversions
    *  ADS1115_DISABLE_ALERT   -> disable comparator / alert pin (default) 
    */
-  //adc.setAlertPinMode(ADS1115_ASSERT_AFTER_1); //uncomment if you want to change the default
+  adc.setAlertPinMode(ADS1115_ASSERT_AFTER_1); //uncomment if you want to change the default
 
   /* Set the conversion rate in SPS (samples per second)
    * Options should be self-explaining: 
@@ -189,19 +182,19 @@ void setup() {
    *  ADS1115_LATCH_DISABLED (default)
    *  ADS1115_LATCH_ENABLED
    */
-  //adc.setAlertLatch(ADS1115_LATCH_ENABLED); //uncomment if you want to change the default
+  adc.setAlertLatch(ADS1115_LATCH_ENABLED); //uncomment if you want to change the default
 
   /* Sets the alert pin polarity if active:
    *  
    * ADS1115_ACT_LOW  ->  active low (default)   
    * ADS1115_ACT_HIGH ->  active high
    */
-  //adc.setAlertPol(ADS1115_ACT_LOW); //uncomment if you want to change the default
+  adc.setAlertPol(ADS1115_ACT_LOW); //uncomment if you want to change the default
  
   /* With this function the alert pin will assert, when a conversion is ready.
    * In order to deactivate, use the setAlertLimit_V function  
    */
-  //adc.setAlertPinToConversionReady(); //uncomment if you want to change the default
+  adc.setAlertPinToConversionReady(); //uncomment if you want to change the default
 
   //Serial.println("ADS1115 Example Sketch - Continuous Mode");
   //Serial.println("All values in volts");
@@ -209,105 +202,38 @@ void setup() {
 
   Serial.println(" done.");
 
-  long ref_sum = 0;
-    for (int n=0; n <= 1000; n++){
-      samples.add(readChannel(ADS1115_COMP_3_GND));
-    }
-  ref_offset = samples.getMedian();
-
+  Serial.print("Initializing Timer...");
+  initTimer();
+  Serial.println("done.");
 
   // connect to server
   Serial.printf("connecting to %s %d \n", server, serverPort);
   if (!client.connect(server, serverPort)) {
     Serial.println("connection failed");
     delay(5000);
+    Serial.println("Starting Loop.");
     return;
   }
+  Serial.println("Starting Loop.");
 }
 
 void loop() {
   yield();
   ArduinoOTA.handle();
+  //Serial.println(adc.getRawResult());
+  //adc.setCompareChannels(ADS1115_COMP_0_GND);  
 
-  //U_sensorValue = analogRead(A0);
-  //int sensorData = readChannel(ADS1115_COMP_0_GND);
-
-  //Serial.print(U_sensorValue);
-  //Serial.print(" ");
-  Serial.print(adc.getRawResult());
-  Serial.print(" ");
-  adc.setCompareChannels(ADS1115_COMP_1_GND);
-  Serial.print(adc.getRawResult());
-  Serial.print(" ");
-  adc.setCompareChannels(ADS1115_COMP_2_GND);
-  Serial.print(adc.getRawResult());
-  Serial.print(" ");
-  adc.setCompareChannels(ADS1115_COMP_3_GND);
-  Serial.println(adc.getRawResult());
-  adc.setCompareChannels(ADS1115_COMP_0_GND);
-  
-
-  //Serial.println(" ");
-  //int A0_avg = buffer_A0.reading(sensorData);
-  
-  //int ref = readChannel(ADS1115_COMP_3_GND) - ref_offset;
-  //int ref_avg = buffer_ref.reading(ref);
-
-  /*
-  buffer_A0.add(int(sensorData - ref));
-  i++ ;
-  if (i == x){
-    A0_flat = buffer_A0.getMedian();
-    i=0;
-  }
-  */
-
-
-  //Serial.print(sensorData);
-  //Serial.print(" ");
-  
-  //Serial.print(ref);
-  //Serial.print(" ");
-  
-  //Serial.print(A0_avg);
-  //Serial.print(" ");
-
-  //Serial.print(ref);
-  //Serial.print(" ");
-
-  //Serial.print(int(sensorData - ref));
-  //Serial.print(" ");
-
-  // PRINT HERE
-  //Serial.println(A0_flat);
-
-  //Serial.print(sensorMovingAvg);
-  //Serial.print(" ");
-  
-  
-  //Serial.println(send_data);
-  
-
-  //Serial.print(" A1 ");
-  //voltage = readChannel(ADS1115_COMP_1_GND);
-  //Serial.print(voltage);
-  
-  //Serial.print(" A2 ");
-  //voltage = readChannel(ADS1115_COMP_2_GND);
-  //Serial.println(voltage);
-
-
-  //delay(200);
-
-  /*
-  if (millis() - old_time >= 1000) {
-    old_time=millis();
-    TCP_send(float(U_sensorValue),float(A0_flat/10000),float(0));
-  }
-  */
 }
 
+void IRAM_ATTR timerCall()
+{
+  Serial.println(analogRead(A0));
+}
 
-
-
-
+void initTimer()
+{
+  timer1_isr_init();
+  timer1_attachInterrupt(timerCall);
+  timer1_enable(TIM_DIV16, TIM_EDGE, TIM_LOOP); // 5 ticks/us
+  timer1_write(5814); // 5814 / 5 ticks per us from TIM_DIV16 == 1162.8 us interval -> 860 SPS
+}
