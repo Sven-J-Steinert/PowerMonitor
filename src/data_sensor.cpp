@@ -30,6 +30,8 @@ ADS1115_WE adc = ADS1115_WE(I2C_ADDRESS);
 
 WiFiClient client;
 
+int A0_buffer = 0;
+
 void initTimer();
 void initInterrupt();
 
@@ -242,9 +244,11 @@ void initTimer()
 
 void IRAM_ATTR interruptCall()
 {
-  Serial.print(adc.getRawResult());
+  Serial.print(adc.getRawResult()-20148);
   Serial.print(" ");
-  Serial.println(analogRead(A0));
+  Serial.println(10 * (A0_buffer - 820));
+  Serial.println(" ");
+  A0_buffer = analogRead(A0);
 }
 
 void initInterrupt()
