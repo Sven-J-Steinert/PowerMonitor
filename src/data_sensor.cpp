@@ -31,6 +31,53 @@ ADS1115_WE adc = ADS1115_WE(I2C_ADDRESS);
 WiFiClient client;
 
 int A0_buffer = 0;
+int A0_value = 0;
+int ADS_value = 0;
+
+int convert_Voltage(int value)
+{
+  // input range
+  int min_value = 200;
+  int max_value = 800;
+  
+  // output range [mv]
+  int min_out = -325 * 1000;
+  int max_out = 325 * 1000;
+
+  int mV = map(value,min_value,max_value,min_out,max_out);
+  return mV;
+}
+
+int convert_Current(int value)
+{
+  // input range
+  int min_value = 0; // sadly only using half of the int16 range
+  int max_value = 32767;
+  
+  // output range [mA]
+  int min_out =-12768;
+  int max_out = 12768;
+
+  // depends on:
+
+  // 1.5 mA / bit
+  // ADS1115_RANGE_6144  ->  +/- 6144 mV
+
+  //  29152 mA = 6144 mV
+  //      20 A = 5000 mV
+  //       0 A = 2500 mV
+  //     -20 A =    0 mV
+  // -29152 mA =-1144 mV
+
+  // ADS1115_RANGE_4096  ->  +/- 4096 mV
+
+  //  12768 mA = 4096 mV
+  //       0 A = 2500 mV
+  // -12768 mA =  904 mV
+
+  int mA = map(value,min_value,max_value,min_out,max_out);
+  return mA;
+}
 
 void initTimer();
 void initInterrupt();
@@ -207,7 +254,7 @@ void setup() {
 
   Serial.print("Initializing Timer...");
   //initTimer();
-  initInterrupt();
+  initInterrupt(); // triggers when ADS sets Alert Pin LOW
   Serial.println("done.");
 
   // connect to server
@@ -224,8 +271,6 @@ void setup() {
 void loop() {
   yield();
   ArduinoOTA.handle();
-  //Serial.println(adc.getRawResult());
-  //adc.setCompareChannels(ADS1115_COMP_0_GND);  
 
 }
 
@@ -244,11 +289,14 @@ void initTimer()
 
 void IRAM_ATTR interruptCall()
 {
-  Serial.print(adc.getRawResult()-20148);
-  Serial.print(" ");
-  Serial.println(10 * (A0_buffer - 820));
-  Serial.println(" ");
   A0_buffer = analogRead(A0);
+  ADS_value = adc.getRawResult();
+  
+  Serial.print(convert_Current(ADS_value));
+  Serial.print(" ");
+  Serial.print(convert_Voltage(A0_value));
+  Serial.println(" ");
+  A0_value = A0_buffer; // delay value 1 step to sync
 }
 
 void initInterrupt()
